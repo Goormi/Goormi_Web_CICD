@@ -15,7 +15,7 @@ jobs:
       - name: Check Node v
         run: node -v
 
-      - name: Build front //해당부분 삭제
+      - name: Build front
         run: |
           npm install
 
@@ -41,7 +41,7 @@ jobs:
         id: image-info
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: goormi_web //본인 ECR레포
+          ECR_REPOSITORY: goormi_web
           IMAGE_TAG: ${{ steps.image.outputs.version }}
           rds_host: ${{ secrets.RDS_HOST }}
           rds_user: ${{ secrets.RDS_USER }}
