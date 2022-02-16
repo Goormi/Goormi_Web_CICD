@@ -15,7 +15,7 @@ jobs:
       - name: Check Node v
         run: node -v
 
-      - name: Build front
+      - name: Build front //해당부분 삭제
         run: |
           npm install
 
@@ -37,72 +37,23 @@ jobs:
           echo VERSION=$VERSION
           echo "::set-output name=version::$VERSION"
 
-      - name: Build, tag image for Amazon ECR
+      - name: Build, tag, and push image to Amazon ECR
         id: image-info
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: goormi_web
+          ECR_REPOSITORY: goormi_web //본인 ECR레포
           IMAGE_TAG: ${{ steps.image.outputs.version }}
+          rds_host: ${{ secrets.RDS_HOST }}
+          rds_user: ${{ secrets.RDS_USER }}
+          rds_password: ${{ secrets.RDS_PASSWORD }}
+          rds_database: ${{ secrets.RDS_DATABASE }}
         run: |
           echo "::set-output name=ecr_repository::$ECR_REPOSITORY"
           echo "::set-output name=image_tag::$IMAGE_TAG"
-          # build
-          docker build                               \
-          --build-arg RHOST='${{ secrets.RDS_HOST }}' \
-          --build-arg RUSER='${{ secrets.RDS_USER }}' \
-          --build-arg RPW='${{ secrets.RDS_PASSWORD }}' \
-          --build-arg RDB='${{ secrets.RDS_DATABASE }}' \
-          --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          # docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ steps.login-ecr.outputs.registry}}/${{ steps.image-info.outputs.ecr_repository }}:${{ steps.image-info.outputs.image_tag }}'
-          # '\${{ steps.login-ecr.outputs.registry}}/\${{ steps.image-info.outputs.ecr_repository }}:\${{ steps.image-info.outputs.image_tag }}'
-          format: 'table'
-          exit-code: '0'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          
-      - name: Push image to Amazon ECR
-        run: |
-          docker push \${{ steps.login-ecr.outputs.registry}}/\${{ steps.image-info.outputs.ecr_repository }}:\${{ steps.image-info.outputs.image_tag }}
-          
-      - name: Setup Kustomize
-        uses: imranismail/setup-kustomize@v1
-        
-      - name: Check token
-        run: |
-          if [[ "\${{secrets.ACTION_TOKEN}}" == "" ]]; then
-            echo The secret does not exist
-          else
-            echo The secret exists
-          fi
-        
-      - name: Checkout kustomize repository
-        uses: actions/checkout@v2
-        with:
-          repository: heyhmin/k8s-manifest-repo
-          ref: main
-          token: ${{ secrets.ACTION_TOKEN }} # \${{ secrets.ACTION_TOKEN }}
-          path: k8s-manifest-repo
+          echo "rds_host is ::$rds_host::"
+          echo "rds_user is ::$rds_user::"
+          echo "rds_password is ::$rds_password::"
+          echo "rds_database is ::$rds_database::"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Update Kubernetes resources
-        run: |
-          echo \${{ steps.login-ecr.outputs.registry }}
-          echo \${{ steps.image-info.outputs.ecr_repository }}
-          echo \${{ steps.image-info.outputs.image_tag }}
-          cd k8s-manifest-repo/overlays/dev/
-          kustomize edit set image \${{ steps.login-ecr.outputs.registry}}/\${{ steps.image-info.outputs.ecr_repository }}=\${{ steps.login-ecr.outputs.registry}}/\${{ steps.image-info.outputs.ecr_repository }}:\${{ steps.image-info.outputs.image_tag }}
-          cat kustomization.yaml
-
-      - name: Commit files
-        run: |
-          cd k8s-manifest-repo
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "github-actions"
-          git commit -am "Update image tag"
-          git push -u origin main
-          
