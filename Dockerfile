@@ -3,10 +3,10 @@ FROM node:latest
 RUN mkdir /app
 WORKDIR /app
 # 환경 변수 설정
-ARG RHOST=goormy-database-1.ce7mkzss15bi.ap-northeast-2.rds.amazonaws.com
-ARG RUSER=admin
-ARG RPW=groomy1!
-ARG RDB=goormy_first_database                                                                              
+ARG RHOST
+ARG RUSER
+ARG RPW
+ARG RDB                                                                         
 RUN set -x \
 && { \ 
 echo "rds_host=$RHOST"; \
